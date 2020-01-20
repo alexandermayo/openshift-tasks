@@ -1,4 +1,4 @@
-#!groovy
+2#!groovy
 podTemplate(
   label: "skopeo-pod",
   cloud: "openshift",
@@ -18,14 +18,20 @@ podTemplate(
     // Define Maven Command to point to the correct
     // settings for our Nexus installation
     def mvnCmd = "mvn -s ./nexus_openshift_settings.xml"
+    echo "Maven Command ${mvnCmd}"
 
     // Set variable globally to be available in all stages
     // Set Development and Production Project Names
     def devProject  = "${GUID}-tasks-dev"
+    echo "Proyecto desarrollo ${devProject}"
     def prodProject = "${GUID}-tasks-prod"
+    echo "Proyecto produccion ${prodProject}"
+
+    sh "pwd"
+    sh "ls -la"
 
     def version = getVersionFromPom("pom.xml")
-
+    echo "Version ${version}"
     // Set the tag for the development image: version + build number
     devTag  = "${version}-" + currentBuild.number
     // Set the tag for the production image: version
