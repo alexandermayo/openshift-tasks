@@ -18,17 +18,12 @@ podTemplate(
     // Define Maven Command to point to the correct
     // settings for our Nexus installation
     def mvnCmd = "mvn -s ./nexus_openshift_settings.xml"
-    echo "Maven Command ${mvnCmd}"
 
     // Set variable globally to be available in all stages
     // Set Development and Production Project Names
     def devProject  = "${GUID}-tasks-dev"
-    echo "Proyecto desarrollo ${devProject}"
     def prodProject = "${GUID}-tasks-prod"
-    echo "Proyecto produccion ${prodProject}"
 
-    sh "pwd"
-    sh "ls -la"
 
     // Checkout Source Code
     stage('Checkout Source') {
@@ -36,13 +31,11 @@ podTemplate(
     }
 
     def version = getVersionFromPom("pom.xml")
-    echo "Version ${version}"
     // Set the tag for the development image: version + build number
     devTag  = "${version}-" + currentBuild.number
     // Set the tag for the production image: version
     prodTag = "${version}"
-    echo "Version ${devTag}"
-    echo "Version ${prodTag}"
+
 
     // Using Maven build the war file
     // Do not run tests in this step
@@ -84,8 +77,8 @@ podTemplate(
       script {
         openshift.withCluster() {
           openshift.withProject("${devProject}") {
-            // openshift.selector("bc", "tasks").startBuild("--from-file=./target/openshift-tasks.war", "--wait=true")
-            openshift.selector("bc", "tasks").startBuild("--from-file=http://nexus3-${GUID}-nexus.apps.ocpdevmad01.tic1.intranet/repository/releases/org/jboss/quickstarts/eap/openshift-tasks/${version}/openshift-tasks-${version}.war", "--wait=true")
+            openshift.selector("bc", "tasks").startBuild("--from-file=./target/openshift-tasks.war", "--wait=true")
+            // openshift.selector("bc", "tasks").startBuild("--from-file=http://nexus3-${GUID}-nexus.apps.ocpdevmad01.tic1.intranet/repository/releases/org/jboss/quickstarts/eap/openshift-tasks/${version}/openshift-tasks-${version}.war", "--wait=true")
             openshift.tag("tasks:latest", "tasks:${devTag}")
           }
         }
