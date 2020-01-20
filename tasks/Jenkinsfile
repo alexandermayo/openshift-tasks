@@ -24,24 +24,17 @@ podTemplate(
     def devProject  = "${GUID}-tasks-dev"
     def prodProject = "${GUID}-tasks-prod"
 
-    def devTag      = "0.0-0"
+    def pom = readMavenPom file: 'pom.xml'
+    def version = pom.version
+
+    // Set the tag for the development image: version + build number
+    devTag  = "${version}-" + currentBuild.number
     // Set the tag for the production image: version
-    def prodTag     = "0.0"
+    prodTag = "${version}"
 
+    // Checkout Source Code
     stage('Checkout Source') {
-      steps {
-        checkout scm
-
-        script {
-          def pom = readMavenPom file: 'pom.xml'
-          def version = pom.version
-
-          // Set the tag for the development image: version + build number
-          devTag  = "${version}-" + currentBuild.number
-          // Set the tag for the production image: version
-          prodTag = "${version}"
-        }
-      }
+      checkout scm
     }
 
     // Using Maven build the war file
