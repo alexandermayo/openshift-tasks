@@ -53,14 +53,12 @@ podTemplate(
 
     // Using Maven run the unit tests
     stage('Unit Tests') {
-      steps {
-        echo "Running Unit Tests"
-        sh "${mvnCmd} test"
+      echo "Running Unit Tests"
+      sh "${mvnCmd} test"
 
-        // This next step is optional.
-        // It displays the results of tests in the Jenkins Task Overview
-        step([$class: 'JUnitResultArchiver', testResults: '**/target/surefire-reports/TEST-*.xml'])
-      }
+      // This next step is optional.
+      // It displays the results of tests in the Jenkins Task Overview
+      step([$class: 'JUnitResultArchiver', testResults: '**/target/surefire-reports/TEST-*.xml'])
     }
 
     stage('Code Analysis') {
@@ -71,27 +69,23 @@ podTemplate(
 
     // Publish the built war file to Nexus
     stage('Publish to Nexus') {
-      steps {
-        echo "Publish to Nexus"
-          sh "${mvnCmd} deploy -DskipTests=true -DaltDeploymentRepository=nexus::default::http://nexus3.${GUID}-nexus.svc.cluster.local:8081/repository/releases"
-      }
+      echo "Publish to Nexus"
+      sh "${mvnCmd} deploy -DskipTests=true -DaltDeploymentRepository=nexus::default::http://nexus3.${GUID}-nexus.svc.cluster.local:8081/repository/releases"
     }
 
 
     // Build the OpenShift Image in OpenShift and tag it.
     stage('Build and Tag OpenShift Image') {
-      steps {
-        echo "Building OpenShift container image tasks:${devTag}"
+      echo "Building OpenShift container image tasks:${devTag}"
 
-        // Start Binary Build in OpenShift using the file we just published
-        // The filename is tasks.war in the 'target' directory of your current
-        // Jenkins workspace
-        script {
-          openshift.withCluster() {
-            openshift.withProject("${devProject}") {
-              openshift.selector("bc", "tasks").startBuild("--from-file=./target/tasks.war", "--wait=true")
-              openshift.tag("tasks:latest", "tasks:${devTag}")
-            }
+      // Start Binary Build in OpenShift using the file we just published
+      // The filename is openshift-tasks.war in the 'target' directory of your current
+      // Jenkins workspace
+      script {
+        openshift.withCluster() {
+          openshift.withProject("${devProject}") {
+            openshift.selector("bc", "tasks").startBuild("--from-file=./target/openshift-tasks.war", "--wait=true")
+            openshift.tag("tasks:latest", "tasks:${devTag}")
           }
         }
       }
@@ -132,30 +126,28 @@ podTemplate(
 
     // Run Integration Tests in the Development Environment.
     stage('Integration Tests') {
-      steps {
-        echo "Running Integration Tests"
-        script {
-          def status = "000"
+      echo "Running Integration Tests"
+      script {
+        def status = "000"
 
-          // Create a new task called "integration_test_1"
-          echo "Creating task"
-          status = sh(returnStdout: true, script: "curl -sw '%{response_code}' -o /dev/null -u 'tasks:redhat1' -H 'Content-Length: 0' -X POST http://tasks.${GUID}-tasks-dev.svc.cluster.local:8080/ws/tasks/integration_test_1").trim()
-          echo "Status: " + status
-          if (status != "201") {
-              error 'Integration Create Test Failed!'
-          }
+        // Create a new task called "integration_test_1"
+        echo "Creating task"
+        status = sh(returnStdout: true, script: "curl -sw '%{response_code}' -o /dev/null -u 'tasks:redhat1' -H 'Content-Length: 0' -X POST http://tasks.${GUID}-tasks-dev.svc.cluster.local:8080/ws/tasks/integration_test_1").trim()
+        echo "Status: " + status
+        if (status != "201") {
+            error 'Integration Create Test Failed!'
+        }
 
-          echo "Retrieving tasks"
-          status = sh(returnStdout: true, script: "curl -sw '%{response_code}' -o /dev/null -u 'tasks:redhat1' -H 'Accept: application/json' -X GET http://tasks.${GUID}-tasks-dev.svc.cluster.local:8080/ws/tasks/1").trim()
-          if (status != "200") {
-              error 'Integration Get Test Failed!'
-          }
+        echo "Retrieving tasks"
+        status = sh(returnStdout: true, script: "curl -sw '%{response_code}' -o /dev/null -u 'tasks:redhat1' -H 'Accept: application/json' -X GET http://tasks.${GUID}-tasks-dev.svc.cluster.local:8080/ws/tasks/1").trim()
+        if (status != "200") {
+            error 'Integration Get Test Failed!'
+        }
 
-          echo "Deleting tasks"
-          status = sh(returnStdout: true, script: "curl -sw '%{response_code}' -o /dev/null -u 'tasks:redhat1' -X DELETE http://tasks.${GUID}-tasks-dev.svc.cluster.local:8080/ws/tasks/1").trim()
-          if (status != "204") {
-              error 'Integration Create Test Failed!'
-          }
+        echo "Deleting tasks"
+        status = sh(returnStdout: true, script: "curl -sw '%{response_code}' -o /dev/null -u 'tasks:redhat1' -X DELETE http://tasks.${GUID}-tasks-dev.svc.cluster.local:8080/ws/tasks/1").trim()
+        if (status != "204") {
+            error 'Integration Create Test Failed!'
         }
       }
     }
@@ -163,12 +155,10 @@ podTemplate(
 
     // Copy Image to Nexus Docker Registry
     stage('Copy Image to Nexus Docker Registry') {
-      steps {
-        echo "Copy image to Nexus Docker Registry"
-        script {
-          // OpenShift 4
-          sh "skopeo copy --src-tls-verify=false --dest-tls-verify=false --src-creds openshift:\$(oc whoami -t) --dest-creds admin:admin docker://image-registry.openshift-image-registry.svc.cluster.local:5000/${devProject}/tasks:${devTag} docker://nexus3-registry.${GUID}-nexus.svc.cluster.local:5000/tasks:${devTag}"
-        }
+      echo "Copy image to Nexus Docker Registry"
+      script {
+        // OpenShift 4
+        sh "skopeo copy --src-tls-verify=false --dest-tls-verify=false --src-creds openshift:\$(oc whoami -t) --dest-creds admin:admin docker://image-registry.openshift-image-registry.svc.cluster.local:5000/${devProject}/tasks:${devTag} docker://nexus3-registry.${GUID}-nexus.svc.cluster.local:5000/tasks:${devTag}"
       }
     }
 
