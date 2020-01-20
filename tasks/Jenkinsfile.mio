@@ -1,0 +1,130 @@
+#!groovy
+podTemplate(
+  label: "skopeo-pod",
+  cloud: "openshift",
+  inheritFrom: "maven",
+  containers: [
+    containerTemplate(
+      name: "jnlp",
+      image: "image-registry.openshift-image-registry.svc:5000/${GUID}-jenkins/jenkins-agent-appdev",
+      resourceRequestMemory: "1Gi",
+      resourceLimitMemory: "2Gi",
+      resourceRequestCpu: "1",
+      resourceLimitCpu: "2"
+    )
+  ]
+) {
+  node('skopeo-pod') {
+    // Define Maven Command to point to the correct
+    // settings for our Nexus installation
+    def mvnCmd = "mvn -s nexus_settings.xml"
+    // Set your project Prefix using your GUID
+    def prefix      = ${GUID}
+
+    // Set variable globally to be available in all stages
+    // Set Development and Production Project Names
+    def devProject  = "${GUID}-demo-dev"
+    def prodProject = "${GUID}-demo-prod"
+
+    // Checkout Source Code.
+    stage('Checkout Source') {
+      git url: "${REPO}"
+      //checkout scm
+    }
+
+    // TBD Set the tag for the development image: version + build number
+    def devTag  = currentBuild.number
+    // Set the tag for the production image: version
+    def prodTag = currentBuild.number
+
+
+    stage('Unit Tests') {
+      echo "Running Unit Tests"
+      sh "${mvnCmd} test"
+    }
+
+    stage('Code Analysis') {
+      echo "Running Code Analysis"
+      sh "${mvnCmd} sonar:sonar -Dsonar.host.url=http://sonarqube-${prefix}-sonarqube.apps.ocp.hx.logicalis.com -Dsonar.projectName=${JOB_BASE_NAME} -Dsonar.projectVersion=${devTag}"
+    }
+
+    // Build the OpenShift Image in OpenShift and tag it.
+    stage('Build and Tag OpenShift Image') {
+      echo "Building OpenShift container image demo-logicalis:${devTag}"
+      script {
+        openshift.withCluster() {
+          openshift.withProject("${devProject}") {
+            openshift.selector("bc", "demo-logicalis").startBuild("--from-repo=", "--wait=true")
+            openshift.tag("demo-logicalis:latest", "demo-logicalis:${devTag}")
+          }
+        }
+      }
+    }
+
+    // Deploy the built image to the Development Environment.
+    stage('Deploy to Dev') {
+      echo "Deploying container image to Development Project"
+      script {
+        // Update the Image on the Development Deployment Config
+        openshift.withCluster() {
+          openshift.withProject("${devProject}") {
+            // OpenShift 4
+            openshift.set("image", "dc/demo-logicalis", "demo-logicalis=image-registry.openshift-image-registry.svc:5000/${devProject}/demo-logicalis:${devTag}")
+
+            // Deploy the development application.
+            openshift.selector("dc", "demo-logicalis").rollout().latest();
+
+            // Wait for application to be deployed
+            def dc = openshift.selector("dc", "demo-logicalis").object()
+            def dc_version = dc.status.latestVersion
+            def rc = openshift.selector("rc", "demo-logicalis-${dc_version}").object()
+
+            echo "Waiting for ReplicationController demo-logicalis-${dc_version} to be ready"
+            while (rc.spec.replicas != rc.status.readyReplicas) {
+              sleep 5
+              rc = openshift.selector("rc", "demo-logicalis-${dc_version}").object()
+            }
+          }
+        }
+      }
+    }
+
+    // Promote to Production
+    stage('PROMOTE-to-PRO - Stage') {
+      input message: "Promote new code?", ok: "Promote"
+      }
+
+    stage('Promote to Production') {
+      echo "Promote to Production"
+      script {
+        openshift.withCluster() {
+          openshift.withProject("${prodProject}") {
+            openshift.tag("${devProject}/demo-logicalis:${devTag}", "${prodProject}/demo-logicalis:${prodTag}")
+            openshift.set("image", "dc/demo-logicalis", "demo-logicalis=image-registry.openshift-image-registry.svc:5000/${prodProject}/demo-logicalis:${prodTag}")
+
+            // Deploy the production application.
+            openshift.selector("dc", "demo-logicalis").rollout().latest();
+
+            // Wait for application to be deployed
+            def dc = openshift.selector("dc", "demo-logicalis").object()
+            def dc_version = dc.status.latestVersion
+            def rc = openshift.selector("rc", "demo-logicalis-${dc_version}").object()
+
+            echo "Waiting for ReplicationController demo-logicalis-${dc_version} to be ready"
+            while (rc.spec.replicas != rc.status.readyReplicas) {
+              sleep 5
+              rc = openshift.selector("rc", "demo-logicalis-${dc_version}").object()
+            }
+          }
+        }
+      }
+    }
+  }
+ }
+// Convenience Functions to read version from the pom.xml
+// Do not change anything below this line.
+// --------------------------------------------------------
+def getVersionFromPom(pom) {
+  def matcher = readFile(pom) =~ '<version>(.+)</version>'
+  matcher ? matcher[0][1] : null
+}
