@@ -34,20 +34,21 @@ podTemplate(
     stage('Checkout Source') {
       checkout scm
     }
-    
+
     def version = getVersionFromPom("pom.xml")
     echo "Version ${version}"
     // Set the tag for the development image: version + build number
     devTag  = "${version}-" + currentBuild.number
     // Set the tag for the production image: version
     prodTag = "${version}"
+    echo "Version ${devTag}"
+    echo "Version ${prodTag}"
+
     // Using Maven build the war file
     // Do not run tests in this step
     stage('Build App') {
-      steps {
-        echo "Building version ${devTag}"
-        sh "${mvnCmd} clean package -DskipTests=true"
-      }
+      echo "Building version ${devTag}"
+      sh "${mvnCmd} clean package -DskipTests=true"
     }
 
     // Using Maven run the unit tests
