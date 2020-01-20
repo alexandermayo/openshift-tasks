@@ -158,7 +158,7 @@ podTemplate(
       echo "Copy image to Nexus Docker Registry"
       script {
         // OpenShift 4
-        sh "skopeo copy --src-tls-verify=false --dest-tls-verify=false --src-creds openshift:\$(oc whoami -t) --dest-creds admin:admin docker://image-registry.openshift-image-registry.svc.cluster.local:5000/${devProject}/tasks:${devTag} docker://nexus3-registry.${GUID}-nexus.svc.cluster.local:5000/tasks:${devTag}"
+        sh "skopeo copy --src-tls-verify=false --dest-tls-verify=false --src-creds openshift:\$(oc whoami -t) --dest-creds admin:admin docker://image-registry.openshift-image-registry.svc.cluster.local:5000/${devProject}/tasks:${devTag} docker://nexus-registry.${GUID}-nexus.svc.cluster.local:5000/tasks:${devTag}"
       }
     }
 
