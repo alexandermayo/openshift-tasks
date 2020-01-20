@@ -85,7 +85,7 @@ podTemplate(
         openshift.withCluster() {
           openshift.withProject("${devProject}") {
             // openshift.selector("bc", "tasks").startBuild("--from-file=./target/openshift-tasks.war", "--wait=true")
-            openshift.selector("bc", "tasks").startBuild("--from-file=http://nexus3.${GUID}-nexus.svc.cluster.local:8081/repository/releases/org/jboss/quickstarts/eap/openshift-tasks/${version}/openshift-tasks-${version}.war", "--wait=true")
+            openshift.selector("bc", "tasks").startBuild("--from-file=http://nexus3-${GUID}-nexus.apps.ocpdevmad01.tic1.intranet/repository/releases/org/jboss/quickstarts/eap/openshift-tasks/${version}/openshift-tasks-${version}.war", "--wait=true")
             openshift.tag("tasks:latest", "tasks:${devTag}")
           }
         }
