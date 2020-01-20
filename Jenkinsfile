@@ -24,7 +24,7 @@ podTemplate(
     def devProject  = "${GUID}-tasks-dev"
     def prodProject = "${GUID}-tasks-prod"
 
-    def version = getVersionFromPom("./pom.xml")
+    def version = getVersionFromPom("pom.xml")
 
     // Set the tag for the development image: version + build number
     devTag  = "${version}-" + currentBuild.number
