@@ -7,10 +7,6 @@ podTemplate(
     containerTemplate(
       name: "jnlp",
       image: "image-registry.openshift-image-registry.svc:5000/${GUID}-jenkins/jenkins-agent-appdev",
-      resourceRequestMemory: "1Gi",
-      resourceLimitMemory: "2Gi",
-      resourceRequestCpu: "1",
-      resourceLimitCpu: "2"
     )
   ]
 ) {
